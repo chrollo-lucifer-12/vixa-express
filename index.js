@@ -8,8 +8,12 @@ import { Readable } from "stream"
 import axios from "axios"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import path from "path"
+import { fileURLToPath } from "url";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const s3 = new S3Client({
     credentials: {
@@ -18,6 +22,8 @@ const s3 = new S3Client({
     },
     region: process.env.BUCKET_REGION
 })
+
+
 
 const app = express();
 
@@ -32,6 +38,12 @@ const io = new Server(server, {
     }
 })
 
+const uploadDir = path.join(__dirname, "temp_upload");
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+
 let recordedChunks = [];
 
 io.on("connection", (socket) => {
@@ -39,10 +51,6 @@ io.on("connection", (socket) => {
 
     socket.on("video-chunks", async (data) => {
         console.log("🟢 video chunk is sent", data);
-        const uploadDir = path.join(__dirname, "temp_upload");
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
         const writeStreams = fs.createWriteStream("temp_upload/" + data.filename)
         recordedChunks.push(data.chunks)
         const videoBlob = new Blob(recordedChunks, {
